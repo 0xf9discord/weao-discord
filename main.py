@@ -86,7 +86,6 @@ def make_embed(items, kind):
         raise RuntimeError('Too many entries for one embed')
     return {'title': f'WEAO | {"EXECUTORS" if kind == "executor" else "EXTERNALS"}',
             'description': 'WEAO API 기준 · 자동 상태 갱신', 'color': 0x5865F2,
-            'fields': fields, 'footer': {'text': '🔴 DOWN=미업데이트 · 🟢 UP=업데이트'},
             'timestamp': datetime.now(timezone.utc).isoformat()}
 
 
