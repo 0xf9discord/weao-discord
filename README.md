@@ -16,3 +16,8 @@ This build includes `/check/<UPTIME_PATH_SECRET>` to permit UptimeRobot free HTT
 - A URL leak enables an unauthorized party to trigger refreshes; Discord bot credentials remain server-side. For stronger authentication use a scheduler supporting custom headers (e.g. GitHub Actions) or paid UptimeRobot.
 - Repeated probes, overlapping runs, or upstream outages may result in errors or duplicate messages. No exactly-once guarantee.
 - UptimeRobot monitors endpoints as a side effect; this is not a job scheduler and calls may be delayed or retried.
+
+
+## 상태 표시 변경
+
+DETECTED 구분을 제거했습니다. DOWN은 🔴 빨간색, UP은 🟢 초록색으로 표시합니다. 탐지 여부와 관계없이 WEAO의 `updateStatus`만 기준으로 합니다. Vercel 재배포 후 기존 UptimeRobot 설정은 그대로 사용하세요.

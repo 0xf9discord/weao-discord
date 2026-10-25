@@ -57,21 +57,18 @@ def group(item):
 
 
 def state(item):
-    if item.get('detected') is True:
-        return 'DETECTED'
-    if item.get('updateStatus') is True:
-        return 'UP'
-    return 'DOWN'
+    # Ignore detection status: only show update availability.
+    return 'UP' if item.get('updateStatus') is True else 'DOWN'
 
 
 def make_embed(items, kind):
-    groups = {'DETECTED': [], 'DOWN': [], 'UP': []}
+    groups = {'DOWN': [], 'UP': []}
     for item in items:
         if isinstance(item, dict) and group(item) == kind:
             name = str(item.get('title') or item.get('name') or 'Unknown')[:80].replace('`', '')
             groups[state(item)].append(name)
     fields = []
-    for st, emoji in [('DETECTED', '🔴'), ('DOWN', '🟠'), ('UP', '🟢')]:
+    for st, emoji in [('DOWN', '🔴'), ('UP', '🟢')]:
         names = sorted(groups[st], key=str.casefold)
         chunks = []
         current = ''
@@ -89,7 +86,7 @@ def make_embed(items, kind):
         raise RuntimeError('Too many entries for one embed')
     return {'title': f'WEAO | {"EXECUTORS" if kind == "executor" else "EXTERNALS"}',
             'description': 'WEAO API 기준 · 자동 상태 갱신', 'color': 0x5865F2,
-            'fields': fields, 'footer': {'text': 'DETECTED=탐지 · DOWN=미업데이트 · UP=업데이트'},
+            'fields': fields, 'footer': {'text': '🔴 DOWN=미업데이트 · 🟢 UP=업데이트'},
             'timestamp': datetime.now(timezone.utc).isoformat()}
 
 
