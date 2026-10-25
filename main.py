@@ -2,6 +2,7 @@
 import os
 import sys
 import logging
+import hmac
 from datetime import datetime, timezone
 import requests
 from flask import Flask, jsonify, request
@@ -27,14 +28,16 @@ def call_discord(method, path, **kwargs):
     response = requests.request(method, DISCORD_API + path, headers={
         'Authorization': f'Bot {token}', 'User-Agent': 'DiscordBot (https://discord.com, 1.0)',
     }, timeout=20, **kwargs)
-    response.raise_for_status()
+    if not response.ok:
+        raise RuntimeError(f'Discord API {method} {path}: HTTP {response.status_code} - {response.text[:400]}')
     return response.json() if response.content else {}
 
 
 def fetch_statuses():
     agent = require_env('WEAO_USER_AGENT')
     r = requests.get(API, headers={'User-Agent': agent, 'Accept': 'application/json'}, timeout=25)
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f'WEAO API HTTP {r.status_code}: {r.text[:300]}')
     data = r.json()
     if isinstance(data, dict):
         data = data.get('data') or data.get('exploits') or data.get('results')
@@ -113,7 +116,7 @@ def update_all():
 
 @app.get('/')
 def home():
-    return jsonify({'status': 'ready', 'service': 'WEAO Discord updater', 'manual_refresh': '/api/refresh'})
+    return jsonify({'status': 'ready', 'service': 'WEAO Discord updater', 'manual_refresh': 'Authorization header required'})
 
 
 @app.get('/api/refresh')
@@ -123,13 +126,34 @@ def refresh():
         return jsonify({'error': 'unauthorized'}), 401
     try:
         return jsonify(update_all())
-    except Exception:
+    except Exception as exc:
         app.logger.exception('Update error')
-        return jsonify({'error': 'Update failed; see Vercel function logs'}), 500
+        return jsonify({'error': str(exc)}), 500
 
+
+
+# UptimeRobot Free: no custom headers. Use an unguessable *path* secret.
+# The URL is a credential: keep the monitor private and rotate if leaked.
+@app.route('/check/<key>', methods=['GET', 'HEAD'])
+def uptime_check(key):
+    expected = os.environ.get('UPTIME_PATH_SECRET', '')
+    if len(expected) < 32 or not hmac.compare_digest(key, expected):
+        return ('Not found', 404, {'Cache-Control': 'no-store'})
+    try:
+        result = update_all()
+        if request.method == 'HEAD':
+            return ('', 204, {'Cache-Control': 'no-store'})
+        return (jsonify(result), 200, {'Cache-Control': 'no-store'})
+    except Exception:
+        app.logger.exception('UptimeRobot refresh failed')
+        return ('Update failed', 503, {'Cache-Control': 'no-store'})
 
 if __name__ == '__main__':
     if '--once' in sys.argv:
-        print(update_all())
+        try:
+            print(update_all())
+        except Exception as exc:
+            logging.exception('WEAO update failed: %s', exc)
+            sys.exit(1)
     else:
         app.run(port=5000)

@@ -1,23 +1,18 @@
-# WEAO Discord status updater
+# WEAO Discord Bot — Vercel + UptimeRobot Free
 
-## Vercel 배포 오류 해결
-- `main.py`를 ZIP 최상위에 배치했으므로 Vercel Flask 진입점으로 인식됩니다.
-- Vercel 프로젝트 Root Directory를 저장소 루트로 지정하세요 (하위 폴더가 아니라 `main.py`가 있는 폴더).
-- Settings > Environment Variables: DISCORD_TOKEN, EXECUTOR_CHANNEL_ID, EXTERNAL_CHANNEL_ID, WEAO_USER_AGENT, CRON_SECRET.
-- 배포 후 `/`는 준비 상태를 반환합니다. 이것만으로 정기 업데이트가 실행되는 것은 아닙니다.
-- 수동 실행 (비밀키를 공개하지 마세요): `curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://YOUR_PROJECT.vercel.app/api/refresh`
+This build includes `/check/<UPTIME_PATH_SECRET>` to permit UptimeRobot free HTTP monitoring, which does not support custom headers.
 
-## 무료 5분 자동 업데이트: GitHub Actions
-- 이 파일들을 GitHub 저장소 루트에 올립니다.
-- Settings > Secrets and variables > Actions > New repository secret 에 DISCORD_TOKEN, EXECUTOR_CHANNEL_ID, EXTERNAL_CHANNEL_ID, WEAO_USER_AGENT 등록.
-- Actions에서 `Update WEAO status` 워크플로 활성화 후 `Run workflow`를 눌러 첫 실행.
-- 이후 약 5분 간격 예약 실행 (GitHub 스케줄 지연/누락 가능). Vercel 배포는 필요 없습니다.
-- GitHub Actions는 저장소의 기본 브랜치에 워크플로가 있어야 예약 실행됩니다.
+## Installation
+1. Deploy all project files to Vercel, with `main.py` at the repository root.
+2. Configure Production environment variables: `DISCORD_TOKEN`, `EXECUTOR_CHANNEL_ID`, `EXTERNAL_CHANNEL_ID`, `WEAO_USER_AGENT`, `CRON_SECRET` (existing authenticated manual endpoint), and `UPTIME_PATH_SECRET`.
+3. Generate `UPTIME_PATH_SECRET` locally with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Keep it private (minimum 32 characters).
+4. Redeploy.
+5. At UptimeRobot, create **HTTP(s)** monitor with URL `https://YOUR-PROJECT.vercel.app/check/YOUR_UPTIME_PATH_SECRET`, interval 5 minutes. Default HEAD requests work. Do not use Keyword monitoring, as it requires a body and may display content.
+6. Test by visiting the URL in a private browser session; 200 JSON with `posted`/`edited` means Discord was updated. If the monitor uses HEAD, expected HTTP 204 means success.
 
-## 참고
-- WEAO가 문서에 요구하는 정확한 User-Agent를 설정해야 합니다.
-- 채널 보기/메시지 읽기/전송/Embed Links 권한을 부여하세요.
-- 기존 상태 메시지는 해당 봇이 작성했고 최근 100개 메시지 안에 있을 때 수정합니다.
-- 실행기/익스터널 구분은 WEAO 제공 필드 및 일부 이름을 바탕으로 한 휴리스틱입니다. WEAO 데이터 구조에 따라 조정할 수 있습니다.
-- DETECTED는 별도 탐지 플래그이지만 이 표시 방식에서는 DETECTED를 우선 분류합니다.
-- Vercel Hobby 예약 실행은 하루 1회로 제한되므로 3분 자동화에는 적합하지 않습니다.
+## Security notes
+- This is a compromise, NOT as private as Authorization headers. URLs may appear in UptimeRobot monitor settings, browser history, and provider/access logs. Keep monitor and logs private. Rotate the secret if exposed. Never post the full URL in chat or a public repo.
+- Existing `/api/refresh` remains protected by Bearer `CRON_SECRET`.
+- A URL leak enables an unauthorized party to trigger refreshes; Discord bot credentials remain server-side. For stronger authentication use a scheduler supporting custom headers (e.g. GitHub Actions) or paid UptimeRobot.
+- Repeated probes, overlapping runs, or upstream outages may result in errors or duplicate messages. No exactly-once guarantee.
+- UptimeRobot monitors endpoints as a side effect; this is not a job scheduler and calls may be delayed or retried.
