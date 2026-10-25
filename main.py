@@ -84,9 +84,13 @@ def make_embed(items, kind):
     # Discord embed max 25 fields, 6000 characters overall.
     if len(fields) > 25:
         raise RuntimeError('Too many entries for one embed')
-    return {'title': f'WEAO | {"EXECUTORS" if kind == "executor" else "EXTERNALS"}',
-            'description': 'WEAO API 기준 · 자동 상태 갱신', 'color': 0x5865F2,
-            'timestamp': datetime.now(timezone.utc).isoformat()}
+    return {
+        'title': f'WEAO | {"EXECUTORS" if kind == "executor" else "EXTERNALS"}',
+        'description': 'WEAO API 기준 · 자동 상태 갱신',
+        'color': 0x5865F2,
+        'fields': fields,
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    }
 
 
 def update_channel(channel_id, kind, items):
